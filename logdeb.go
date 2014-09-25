@@ -20,12 +20,11 @@ const (
 
 // Debug level - type tDebLevel
 const (
-	DLZ   = iota // zero, no debug
-	DLB          // base
-	DLE          // extended
-	DLV          // verbose
-	DLVV         // very verbose
-	DLVVV        // even more verbose
+	DLB   = iota + 1 // base
+	DLE              // extended
+	DLV              // verbose
+	DLVV             // very verbose
+	DLVVV            // even more verbose
 )
 
 type SLogger struct {
@@ -43,9 +42,10 @@ type tSeverity int8
 type tDebLevel int8
 
 type TLogMsg struct {
-	fnc string
-	msg string
-	sev tSeverity
+	fnc    string
+	msg    string
+	sev    tSeverity
+	debLev tDebLevel
 }
 
 type ILogWriter interface {
@@ -61,6 +61,7 @@ var logWriters = make(map[string]tLogWriter)
 
 func NewLogDeb(bufferSize int64, config string) *SLogger {
 	l := new(SLogger)
+	//l.severity = SEVERROR
 	l.msgChan = make(chan *TLogMsg, bufferSize)
 	l.writers = make(map[string]ILogWriter)
 	go l.StartWriter()
@@ -104,6 +105,10 @@ func (l *SLogger) SetMaxDebugLevel(debugLevel tDebLevel) {
 	}
 }
 
+func (l *SLogger) SetSeverity(severity tSeverity) {
+	l.severity = severity
+}
+
 func (l *SLogger) StartWriter() {
 	for {
 		select {
@@ -115,11 +120,11 @@ func (l *SLogger) StartWriter() {
 	}
 }
 
-func (l *SLogger) logw(fn string, msg string, sev tSeverity) error {
+func (l *SLogger) logw(fn string, msg string, sev tSeverity, debLev tDebLevel) error {
 	if sev < l.severity {
 		return nil
 	}
-	mt := &TLogMsg{fnc: fn, msg: msg, sev: sev}
+	mt := &TLogMsg{fnc: fn, msg: msg, sev: sev, debLev: debLev}
 	//mt := fmt.Sprintf("[%s - %s] %s", fn, sev, msg)
 	// TODO: Write messages to buffer. Filter by severity
 	l.msgChan <- mt
@@ -127,14 +132,13 @@ func (l *SLogger) logw(fn string, msg string, sev tSeverity) error {
 }
 
 func (l *SLogger) Deb(fn string, msg string) {
-	// TODO: filter messages by level
-	l.logw(fn, msg, SEVDEBUG)
+	l.logw(fn, msg, SEVDEBUG, DLB)
 }
 
 // Debug with debug level
 func (l *SLogger) Debl(fn string, msg string, debLev tDebLevel) {
 	if debLev <= l.maxDebLev {
-		l.logw(fn, msg, SEVDEBUG)
+		l.logw(fn, msg, SEVDEBUG, debLev)
 	}
 }
 

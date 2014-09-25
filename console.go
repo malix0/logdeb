@@ -8,6 +8,7 @@ import (
 
 type ConsoleWriter struct {
 	l          *log.Logger
+	Severity   tSeverity
 	DebugLevel tDebLevel
 }
 
@@ -15,13 +16,14 @@ type ConsoleWriter struct {
 func NewConsole() ILogWriter {
 	cw := new(ConsoleWriter)
 	cw.l = log.New(os.Stdout, "", log.Ldate|log.Ltime)
+	cw.Severity = SEVERROR
 	cw.DebugLevel = DLB
 	//cw.Level = LevelTrace
 	return cw
 }
 
 // init console logger.
-// jsonconfig like '{"level":LevelTrace}'.
+// jsonconfig like '{Severity":SEVDEBUG, "DebugLevel":DLB}'.
 func (cw *ConsoleWriter) Init(logger *SLogger, jsonconfig []byte) error {
 	err := json.Unmarshal(jsonconfig, cw)
 	if err != nil {
@@ -33,6 +35,9 @@ func (cw *ConsoleWriter) Init(logger *SLogger, jsonconfig []byte) error {
 
 // write message in console.
 func (cw *ConsoleWriter) Write(msg TLogMsg) error {
+	if msg.sev < cw.Severity || (msg.sev == SEVDEBUG && msg.debLev > cw.DebugLevel) {
+		return nil
+	}
 	cw.l.Println("|||", msg.fnc, "|||", msg.msg)
 	return nil
 }
