@@ -21,9 +21,8 @@ import (
 )
 
 type ConsoleWriter struct {
-	l          *log.Logger
-	Severity   tSeverity
-	DebugLevel tDebLevel
+	l *log.Logger
+	tWriteRule
 }
 
 // create ConsoleWriter returning as ILogWriter.

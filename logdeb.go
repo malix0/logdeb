@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sync"
+	"time"
 )
 
 const cPckName = "logdeb"
@@ -41,22 +42,37 @@ const (
 	DLVVV            // even more verbose
 )
 
+// Basic write rule
+type tRule struct {
+	Severity   tSeverity
+	DebugLevel tDebLevel
+}
+
+// Write rule generic and with func granularity
+type tWriteRule struct {
+	tRule
+	WriteRules map[tFncName]tRule
+}
+
+//
 type SLogger struct {
 	lock      sync.Mutex            // ensures atomic writes; protects the following fields
-	funcName  string                // prefix to write at beginning of each line
 	severity  tSeverity             // Log severity
 	msgChan   chan *TLogMsg         // Channels that will dispatch the log messages
 	writers   map[string]ILogWriter // Log writers
 	buf       bytes.Buffer          // for accumulating text to write
-	maxDebLev tDebLevel
+	maxDebLev tDebLevel             // Maximum debug level used by writers. Used to discard message immediately
+	sessionId string                // Log session Id
 }
 
 type tSeverity int8
 
 type tDebLevel int8
 
+type tFncName string
+
 type TLogMsg struct {
-	fnc    string
+	fnc    tFncName
 	msg    string
 	sev    tSeverity
 	debLev tDebLevel
@@ -73,9 +89,22 @@ type tLogWriter func() ILogWriter
 
 var logWriters = make(map[string]tLogWriter)
 
+func GetTsStr() string {
+	var t time.Time
+	t = time.Now()
+	year, month, day := t.Date()
+	hour, min, sec := t.Clock()
+	msec := t.Nanosecond() / 1e6
+	return fmt.Sprintf("%d%02d%02d%02d%02d%02d%03d", year, month, day, hour, min, sec, msec)
+}
+
+// NewLogDeb start configured writers and returns a new SLogger
+// - bufferSize: is the size of channel that hold messages before send to writers
+// - config:     is the configuration in JSON format. Like {"console":{"Severity":1, "DebugLevel":3}}
 func NewLogDeb(bufferSize int64, config string) *SLogger {
 	l := new(SLogger)
 	//l.severity = SEVERROR
+	l.sessionId = "GEN" + GetTsStr() // TODO: Call SetSessionId
 	l.msgChan = make(chan *TLogMsg, bufferSize)
 	l.writers = make(map[string]ILogWriter)
 	go l.StartWriter()
@@ -102,6 +131,9 @@ func NewLogDeb(bufferSize int64, config string) *SLogger {
 	return l
 }
 
+// TODO SetSessionId
+
+// CreateWriter register a writer adapter
 func CreateWriter(name string, writer tLogWriter) {
 	const cFncName = cPckName + ".CreateWriter"
 	if writer == nil {
@@ -134,25 +166,25 @@ func (l *SLogger) StartWriter() {
 	}
 }
 
-func (l *SLogger) logw(fn string, msg string, sev tSeverity, debLev tDebLevel) error {
+func (l *SLogger) logw(fnc tFncName, msg string, sev tSeverity, debLev tDebLevel) error {
 	if sev < l.severity {
 		return nil
 	}
-	mt := &TLogMsg{fnc: fn, msg: msg, sev: sev, debLev: debLev}
+	mt := &TLogMsg{fnc: fnc, msg: msg, sev: sev, debLev: debLev}
 	//mt := fmt.Sprintf("[%s - %s] %s", fn, sev, msg)
 	// TODO: Write messages to buffer. Filter by severity
 	l.msgChan <- mt
 	return nil
 }
 
-func (l *SLogger) Deb(fn string, msg string) {
-	l.logw(fn, msg, SEVDEBUG, DLB)
+func (l *SLogger) Deb(fnc tFncName, msg string) {
+	l.logw(fnc, msg, SEVDEBUG, DLB)
 }
 
 // Debug with debug level
-func (l *SLogger) Debl(fn string, msg string, debLev tDebLevel) {
+func (l *SLogger) Debl(fnc tFncName, msg string, debLev tDebLevel) {
 	if debLev <= l.maxDebLev {
-		l.logw(fn, msg, SEVDEBUG, debLev)
+		l.logw(fnc, msg, SEVDEBUG, debLev)
 	}
 }
 
