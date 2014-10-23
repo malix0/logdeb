@@ -20,14 +20,14 @@ import (
 	"os"
 )
 
-type ConsoleWriter struct {
+type SConsoleWriter struct {
 	l *log.Logger
-	tWriteRule
+	sWriteRules
 }
 
 // create ConsoleWriter returning as ILogWriter.
 func NewConsole() ILogWriter {
-	cw := new(ConsoleWriter)
+	cw := new(SConsoleWriter)
 	cw.l = log.New(os.Stdout, "", log.Ldate|log.Ltime)
 	cw.Severity = SEVERROR
 	cw.DebugLevel = DLB
@@ -37,7 +37,7 @@ func NewConsole() ILogWriter {
 
 // init console logger.
 // jsonconfig like '{Severity":SEVDEBUG, "DebugLevel":DLB}'.
-func (cw *ConsoleWriter) Init(logger *SLogger, jsonconfig []byte) error {
+func (cw *SConsoleWriter) Init(logger *SLogger, jsonconfig []byte) error {
 	err := json.Unmarshal(jsonconfig, cw)
 	if err != nil {
 		return err
@@ -47,7 +47,7 @@ func (cw *ConsoleWriter) Init(logger *SLogger, jsonconfig []byte) error {
 }
 
 // write message in console.
-func (cw *ConsoleWriter) Write(msg TLogMsg) error {
+func (cw *SConsoleWriter) Write(msg SLogMsg) error {
 	if msg.sev < cw.Severity || (msg.sev == SEVDEBUG && msg.debLev > cw.DebugLevel) {
 		return nil
 	}
@@ -56,12 +56,12 @@ func (cw *ConsoleWriter) Write(msg TLogMsg) error {
 }
 
 // implementing method. empty.
-func (cw *ConsoleWriter) Destroy() {
+func (cw *SConsoleWriter) Destroy() {
 
 }
 
 // implementing method. empty.
-func (cw *ConsoleWriter) Flush() {
+func (cw *SConsoleWriter) Flush() {
 
 }
 

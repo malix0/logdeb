@@ -43,22 +43,22 @@ const (
 )
 
 // Basic write rule
-type tRule struct {
+type sBaseRule struct {
 	Severity   tSeverity
 	DebugLevel tDebLevel
 }
 
-// Write rule generic and with func granularity
-type tWriteRule struct {
-	tRule
-	WriteRules map[tFncName]tRule
+// Write rules generic and with func granularity
+type sWriteRules struct {
+	sBaseRule
+	FncRules map[tFncName]sBaseRule
 }
 
-//
+// SLogger is the basic struct of deblog
 type SLogger struct {
 	lock      sync.Mutex            // ensures atomic writes; protects the following fields
 	severity  tSeverity             // Log severity
-	msgChan   chan *TLogMsg         // Channels that will dispatch the log messages
+	msgChan   chan *SLogMsg         // Channels that will dispatch the log messages
 	writers   map[string]ILogWriter // Log writers
 	buf       bytes.Buffer          // for accumulating text to write
 	maxDebLev tDebLevel             // Maximum debug level used by writers. Used to discard message immediately
@@ -71,7 +71,7 @@ type tDebLevel int8
 
 type tFncName string
 
-type TLogMsg struct {
+type SLogMsg struct {
 	fnc    tFncName
 	msg    string
 	sev    tSeverity
@@ -80,7 +80,7 @@ type TLogMsg struct {
 
 type ILogWriter interface {
 	Init(logger *SLogger, jsonconfig []byte) error
-	Write(msg TLogMsg) error
+	Write(msg SLogMsg) error
 	Destroy()
 	Flush()
 }
@@ -105,7 +105,7 @@ func NewLogDeb(bufferSize int64, config string) *SLogger {
 	l := new(SLogger)
 	//l.severity = SEVERROR
 	l.sessionId = "GEN" + GetTsStr() // TODO: Call SetSessionId
-	l.msgChan = make(chan *TLogMsg, bufferSize)
+	l.msgChan = make(chan *SLogMsg, bufferSize)
 	l.writers = make(map[string]ILogWriter)
 	go l.StartWriter()
 
@@ -170,7 +170,7 @@ func (l *SLogger) logw(fnc tFncName, msg string, sev tSeverity, debLev tDebLevel
 	if sev < l.severity {
 		return nil
 	}
-	mt := &TLogMsg{fnc: fnc, msg: msg, sev: sev, debLev: debLev}
+	mt := &SLogMsg{fnc: fnc, msg: msg, sev: sev, debLev: debLev}
 	//mt := fmt.Sprintf("[%s - %s] %s", fn, sev, msg)
 	// TODO: Write messages to buffer. Filter by severity
 	l.msgChan <- mt
