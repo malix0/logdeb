@@ -23,6 +23,7 @@ import (
 type SConsoleWriter struct {
 	l *log.Logger
 	sWriteRules
+	mainLogger *SLogger
 }
 
 // create ConsoleWriter returning as ILogWriter.
@@ -42,13 +43,14 @@ func (cw *SConsoleWriter) Init(logger *SLogger, jsonconfig []byte) error {
 	if err != nil {
 		return err
 	}
-	logger.SetMaxDebugLevel(cw.DebugLevel)
+	cw.mainLogger = logger
 	return nil
 }
 
 // write message in console.
 func (cw *SConsoleWriter) Write(msg SLogMsg) error {
-	if msg.sev < cw.Severity || (msg.sev == SEVDEBUG && msg.debLev > cw.DebugLevel) {
+	prDeb("Write", msg)
+	if !cw.mainLogger.MustWrite("console", msg) {
 		return nil
 	}
 	cw.l.Println("|||", msg.fnc, "|||", msg.msg)
