@@ -97,7 +97,7 @@ type SLogger struct {
 	sessionId   string                // Log session Id
 }
 
-const DEBUG = "1"
+const DEBUG = "0"
 
 func prDeb(fnc string, par ...interface{}) {
 	if DEBUG == "1" {
@@ -130,9 +130,10 @@ func NewLogDeb(bufferSize int64, config string) *SLogger {
 	l := new(SLogger)
 	l.SetSeverity(SEVERROR)
 	l.SetDebugLevel(DLB)
-	l.sessionId = "GEN" + GetTsStr() // TODO: Call SetSessionId
+	l.SetSessionId("GEN" + GetTsStr())
 	l.msgChan = make(chan *SLogMsg, bufferSize)
 	l.writers = make(map[string]SLogWriter)
+	l.wg.Add(1)
 	go l.StartWriter()
 
 	// Read writers and their configuration from config
@@ -146,7 +147,6 @@ func NewLogDeb(bufferSize int64, config string) *SLogger {
 	defer l.lock.Unlock()
 	for wr, c := range writersConf {
 		if wr == "main" {
-			// TODO: Get Main config
 			json.Unmarshal(c, &l)
 			if l.Severity == 0 {
 				l.SetSeverity(SEVERROR)
@@ -171,11 +171,11 @@ func NewLogDeb(bufferSize int64, config string) *SLogger {
 			}
 		}
 	}
-	//l.wg.Wait()
+	if len(l.writers) == 0 {
+		panic("No writer configured")
+	}
 	return l
 }
-
-// TODO SetSessionId
 
 // CreateWriter register a writer adapter
 func CreateWriter(name string, writer tLogWriter) {
@@ -187,6 +187,11 @@ func CreateWriter(name string, writer tLogWriter) {
 		panic(fmt.Sprintf("%s: writer %s already exists", cFncName, name))
 	}
 	logWriters[name] = writer
+}
+
+// SetSessionId set the log session unique identification
+func (l *SLogger) SetSessionId(sessionId string) {
+	l.sessionId = sessionId
 }
 
 func (l *SLogger) setMaxSeverity(sev tSeverity) {
@@ -212,7 +217,7 @@ func (l *SLogger) setMaxDebugLevel(debLev tDebLevel) {
 func (l *SLogger) SetDebugLevel(debLev tDebLevel) {
 	l.DebugLevel = debLev
 	l.setMaxDebugLevel(debLev)
-	prDeb("SetDebugLevel :: debLev:", debLev, "maxDebLev:", l.maxDebLev)
+	prDeb("SetDebugLevel", "debLev:", debLev, "maxDebLev:", l.maxDebLev)
 }
 
 // get: get rule or parent rule when rule data is null
@@ -256,14 +261,11 @@ func (l *SLogger) MustWrite(writerName string, msg SLogMsg) bool {
 
 func (l *SLogger) StartWriter() {
 	prDeb("StartWriter", "run")
-	for {
-		select {
-		case lm := <-l.msgChan:
-			for _, lw := range l.writers {
-				prDeb("StartWriter", "lw:", lw, ":: lm:", *lm)
-				lw.writer.Write(*lm)
-			}
-			//l.wg.Done()
+	defer l.wg.Done()
+	for lm := range l.msgChan {
+		for _, lw := range l.writers {
+			prDeb("StartWriter", "lw:", lw, ":: lm:", *lm)
+			lw.writer.Write(*lm)
 		}
 	}
 }
@@ -275,7 +277,6 @@ func (l *SLogger) logw(fnc tFncName, msg string, sev tSeverity, debLev tDebLevel
 		return nil
 	}
 	prDeb(cFncName, "WRITE:", msg)
-	//l.wg.Add(1)
 	lm := &SLogMsg{fnc: fnc, msg: msg, sev: sev, debLev: debLev}
 	l.msgChan <- lm
 	return nil
@@ -297,19 +298,33 @@ func (l *SLogger) Info(fnc tFncName, msg string) {
 	l.logw(fnc, msg, SEVINFO, 0)
 }
 
+// Deb: log message with severity debug
 func (l *SLogger) Deb(fnc tFncName, msg string) {
 	l.logw(fnc, msg, SEVDEBUG, DLB)
 }
 
-// Debug with debug level
+// Debl: log message with severity debug and input debug level
 func (l *SLogger) Debl(fnc tFncName, msg string, debLev tDebLevel) {
 	if debLev <= l.maxDebLev {
 		l.logw(fnc, msg, SEVDEBUG, debLev)
 	}
 }
 
+// Flush all chan data
+func (l *SLogger) Flush() {
+	for _, lw := range l.writers {
+		lw.writer.Flush()
+	}
+}
+
+// Destroy logger, flush all chan data and destroy all writers.
 func (l *SLogger) Destroy() {
-	//l.wg.Wait()
+	close(l.msgChan)
+	l.wg.Wait()
+	for _, lw := range l.writers {
+		lw.writer.Flush()
+		lw.writer.Destroy()
+	}
 }
 
 func (sev tSeverity) String() string {

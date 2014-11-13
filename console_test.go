@@ -35,18 +35,22 @@ func TestConsole(t *testing.T) {
 	l3.Deb("TestConsole3.writeme", "test console with rule 1")
 	l3.Deb("TestConsole3.dontwriteme", "test console with rule 2")
 
-	config = `{}`
+	config = `{"console":{}}`
 	l4 := NewLogDeb(10, config)
 	l4.Deb("TestConsole4.dontwriteme", "test console debug without config")
 
 }
 
-func TestConsoleMain(t *testing.T) {
-	config := `{"main":{"Severity":5}}`
+func TestConsoleMainConf(t *testing.T) {
+	config := `{"main":{"Severity":5}, "console":{}}`
 	l5 := NewLogDeb(10, config)
-	l5.Deb("TestConsole5.writeme", "MAIN with severity Debug")
+	l5.Deb("TestConsole5.writeme", "Debug with MAIN severity Debug")
 
-	config = `{"main":{"Severity":5}}`
+	config = `{"main":{"Severity":5}, "console": {}}`
 	l6 := NewLogDeb(10, config)
-	l6.Err("TestConsole6.writeme", "MAIN ERR with severity Debug")
+	l6.Err("TestConsole6.writeme", "Error with MAIN severity Debug")
+
+	config = `{"main":{"Severity":2}, "console": {}}`
+	l7 := NewLogDeb(10, config)
+	l7.Warn("TestConsole7.dontwriteme", "Warning with MAIN severity Error")
 }

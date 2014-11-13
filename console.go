@@ -21,23 +21,18 @@ import (
 )
 
 type SConsoleWriter struct {
-	l *log.Logger
-	sWriteRules
+	l          *log.Logger
 	mainLogger *SLogger
 }
 
-// create ConsoleWriter returning as ILogWriter.
+// NewConsole: create ConsoleWriter returning as ILogWriter.
 func NewConsole() ILogWriter {
 	cw := new(SConsoleWriter)
 	cw.l = log.New(os.Stdout, "", log.Ldate|log.Ltime)
-	cw.Severity = SEVERROR
-	cw.DebugLevel = DLB
-	//cw.Level = LevelTrace
 	return cw
 }
 
-// init console logger.
-// jsonconfig like '{Severity":SEVDEBUG, "DebugLevel":DLB}'.
+// Init console logger.
 func (cw *SConsoleWriter) Init(logger *SLogger, jsonconfig []byte) error {
 	err := json.Unmarshal(jsonconfig, cw)
 	if err != nil {
@@ -47,7 +42,7 @@ func (cw *SConsoleWriter) Init(logger *SLogger, jsonconfig []byte) error {
 	return nil
 }
 
-// write message in console.
+// Write message in console.
 func (cw *SConsoleWriter) Write(msg SLogMsg) error {
 	prDeb("Write", msg)
 	if !cw.mainLogger.MustWrite("console", msg) {
