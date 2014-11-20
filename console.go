@@ -15,7 +15,6 @@
 package logdeb
 
 import (
-	"encoding/json"
 	"log"
 	"os"
 )
@@ -33,11 +32,7 @@ func NewConsole() ILogWriter {
 }
 
 // Init console logger.
-func (cw *SConsoleWriter) Init(logger *SLogger, jsonconfig []byte) error {
-	err := json.Unmarshal(jsonconfig, cw)
-	if err != nil {
-		return err
-	}
+func (cw *SConsoleWriter) Init(logger *SLogger, config map[string]interface{}) error {
 	cw.mainLogger = logger
 	return nil
 }

@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 )
@@ -68,7 +69,7 @@ type SLogMsg struct {
 }
 
 type ILogWriter interface {
-	Init(logger *SLogger, jsonconfig []byte) error
+	Init(logger *SLogger, config map[string]interface{}) error
 	Write(msg SLogMsg) error
 	Destroy()
 	Flush()
@@ -114,10 +115,23 @@ func GetTsStr() string {
 	return fmt.Sprintf("%d%02d%02d%02d%02d%02d%03d", year, month, day, hour, min, sec, msec)
 }
 
-func getWriteRules(jsonconfig []byte) sWriteRules {
+func getWriteRules(config map[string]interface{}) sWriteRules {
+	prDeb("getWriteRules", "config:", config)
 	wr := new(sWriteRules)
-	json.Unmarshal(jsonconfig, wr)
-	// TODO: remove prDeb
+    wr.extract(config)
+	for k, v := range config {
+		prDeb("getWriteRules", "k:", k, "v:", v, "strings.Title(k):", strings.Title(k))
+        if strings.ToLower(k) == "fncrules" {
+            wr.FncRules = make(map[tFncName]sBaseRule)
+            rules := v.(map[string]interface{})
+            for fnc, rc := range rules {
+                fnc := tFncName(fnc)
+                r := new(sBaseRule)
+                r.extract(rc.(map[string]interface{}))
+                wr.FncRules[fnc] = *r
+            }
+		}
+	}
 	prDeb("getWriteRules", "WriteRules:", *wr)
 	return *wr
 }
@@ -162,8 +176,11 @@ func NewLogDeb(bufferSize int64, config string) *SLogger {
 		} else {
 			if logWriter, ok := logWriters[wr]; ok {
 				lw := logWriter()
-				lw.Init(l, c)
-				l.writers[wr] = SLogWriter{writer: lw, writeRules: getWriteRules(c)}
+				var ci interface{}
+				json.Unmarshal(c, &ci)
+				cm := ci.(map[string]interface{})
+				lw.Init(l, cm)
+				l.writers[wr] = SLogWriter{writer: lw, writeRules: getWriteRules(cm)}
 				l.setMaxSeverity(l.writers[wr].writeRules.Severity)
 				l.setMaxDebugLevel(l.writers[wr].writeRules.DebugLevel)
 			} else {
@@ -220,7 +237,21 @@ func (l *SLogger) SetDebugLevel(debLev tDebLevel) {
 	prDeb("SetDebugLevel", "debLev:", debLev, "maxDebLev:", l.maxDebLev)
 }
 
-// get: get rule or parent rule when rule data is null
+// extract: extract base rule value from config
+func (r *sBaseRule) extract(config map[string]interface{}) {
+    for k, v := range config {
+		prDeb("extract", "k:", k, "v:", v)
+		if strings.ToLower(k) == "severity" {
+			prDeb("extract", "Set Severity:", v)
+			r.Severity = tSeverity(v.(float64))
+		} else if strings.ToLower(k) == "debuglevel" {
+			prDeb("extract", "Set Debuglevel:", v)
+			r.DebugLevel = tDebLevel(v.(float64))
+		}
+	}
+}
+
+// get: get rule or parent rule when rule value is null
 func (r sBaseRule) get(parentRule sBaseRule) sBaseRule {
 	if r.Severity == 0 {
 		r.Severity = parentRule.Severity
@@ -240,7 +271,7 @@ func (r sBaseRule) eval(msg SLogMsg, parentRule sBaseRule) bool {
 
 func (l *SLogger) MustWrite(writerName string, msg SLogMsg) bool {
 	prDeb("MustWrite")
-	if len(l.writers[writerName].writeRules.FncRules) > 0 {
+	if l.UseFncRules && len(l.writers[writerName].writeRules.FncRules) > 0 {
 		// Search inside FncRules for function name matching
 		// or plartial matching
 		for {
@@ -272,9 +303,10 @@ func (l *SLogger) StartWriter() {
 
 func (l *SLogger) logw(fnc tFncName, msg string, sev tSeverity, debLev tDebLevel) error {
 	const cFncName = cPckName + ".logw"
-	prDeb(cFncName, "sev:", sev, "maxSeverity:", l.maxSeverity)
+    prDeb(cFncName, "sev:", sev, ":: maxSeverity:", l.maxSeverity, ":: UseFncRules:", l.UseFncRules)
 	if !l.UseFncRules && sev > l.maxSeverity {
-		return nil
+        prDeb(cFncName, "EXIT")
+        return nil
 	}
 	prDeb(cFncName, "WRITE:", msg)
 	lm := &SLogMsg{fnc: fnc, msg: msg, sev: sev, debLev: debLev}
