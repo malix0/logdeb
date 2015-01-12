@@ -98,7 +98,7 @@ type SLogger struct {
 	sessionId   string                // Log session Id
 }
 
-const DEBUG = "0"
+const DEBUG = "1"
 
 func prDeb(fnc string, par ...interface{}) {
 	if DEBUG == "1" {
@@ -118,18 +118,18 @@ func GetTsStr() string {
 func getWriteRules(config map[string]interface{}) sWriteRules {
 	prDeb("getWriteRules", "config:", config)
 	wr := new(sWriteRules)
-    wr.extract(config)
+	wr.extract(config)
 	for k, v := range config {
 		prDeb("getWriteRules", "k:", k, "v:", v, "strings.Title(k):", strings.Title(k))
-        if strings.ToLower(k) == "fncrules" {
-            wr.FncRules = make(map[tFncName]sBaseRule)
-            rules := v.(map[string]interface{})
-            for fnc, rc := range rules {
-                fnc := tFncName(fnc)
-                r := new(sBaseRule)
-                r.extract(rc.(map[string]interface{}))
-                wr.FncRules[fnc] = *r
-            }
+		if strings.ToLower(k) == "fncrules" {
+			wr.FncRules = make(map[tFncName]sBaseRule)
+			rules := v.(map[string]interface{})
+			for fnc, rc := range rules {
+				fnc := tFncName(fnc)
+				r := new(sBaseRule)
+				r.extract(rc.(map[string]interface{}))
+				wr.FncRules[fnc] = *r
+			}
 		}
 	}
 	prDeb("getWriteRules", "WriteRules:", *wr)
@@ -239,7 +239,7 @@ func (l *SLogger) SetDebugLevel(debLev tDebLevel) {
 
 // extract: extract base rule value from config
 func (r *sBaseRule) extract(config map[string]interface{}) {
-    for k, v := range config {
+	for k, v := range config {
 		prDeb("extract", "k:", k, "v:", v)
 		if strings.ToLower(k) == "severity" {
 			prDeb("extract", "Set Severity:", v)
@@ -303,10 +303,10 @@ func (l *SLogger) StartWriter() {
 
 func (l *SLogger) logw(fnc tFncName, msg string, sev tSeverity, debLev tDebLevel) error {
 	const cFncName = cPckName + ".logw"
-    prDeb(cFncName, "sev:", sev, ":: maxSeverity:", l.maxSeverity, ":: UseFncRules:", l.UseFncRules)
+	prDeb(cFncName, "sev:", sev, ":: maxSeverity:", l.maxSeverity, ":: UseFncRules:", l.UseFncRules)
 	if !l.UseFncRules && sev > l.maxSeverity {
-        prDeb(cFncName, "EXIT")
-        return nil
+		prDeb(cFncName, "EXIT")
+		return nil
 	}
 	prDeb(cFncName, "WRITE:", msg)
 	lm := &SLogMsg{fnc: fnc, msg: msg, sev: sev, debLev: debLev}

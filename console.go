@@ -24,8 +24,8 @@ type SConsoleWriter struct {
 	mainLogger *SLogger
 }
 
-// NewConsole: create ConsoleWriter returning as ILogWriter.
-func NewConsole() ILogWriter {
+// NewConsoleWriter: create SConsoleWriter returning as ILogWriter.
+func NewConsoleWriter() ILogWriter {
 	cw := new(SConsoleWriter)
 	cw.l = log.New(os.Stdout, "", log.Ldate|log.Ltime)
 	return cw
@@ -58,5 +58,5 @@ func (cw *SConsoleWriter) Flush() {
 }
 
 func init() {
-	CreateWriter("console", NewConsole)
+	CreateWriter("console", NewConsoleWriter)
 }
