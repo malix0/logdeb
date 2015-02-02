@@ -22,23 +22,44 @@ import (
 	"sync"
 )
 
+// an *os.File writer with locker.
+type MuxWriter struct {
+	sync.Mutex
+	fd *os.File
+}
+
 type SFileWriter struct {
 	l          *log.Logger
 	mainLogger *SLogger
 	fileName   string
-	lock       sync.Mutex
-	fd         *os.File
+	mw         *MuxWriter
+}
+
+// write to os.File.
+func (mw *MuxWriter) Write(b []byte) (int, error) {
+	mw.Lock()
+	defer mw.Unlock()
+	return mw.fd.Write(b)
+}
+
+// SetFd: set file descriptor
+func (mw *MuxWriter) SetFd(fd *os.File) {
+	if mw.fd != nil {
+		mw.fd.Close()
+	}
+	mw.fd = fd
 }
 
 // NewFileWriter: create SFileWriter returning as ILogWriter.
 func NewFileWriter() ILogWriter {
 	fw := new(SFileWriter)
 	// TODO: Set writer
-	//cw.l = log.New(os.Stdout, "", log.Ldate|log.Ltime)
-	fw.l = log.New(fw.fd, "", log.Ldate|log.Ltime)
+	fw.mw = new(MuxWriter)
+	fw.l = log.New(fw.mw, "", log.Ldate|log.Ltime)
 	return fw
 }
 
+// getConfig: extract configuration
 func (fw *SFileWriter) getConfig(config map[string]interface{}) error {
 	const FNAME = "getConfig"
 	prDeb(FNAME, "config:", config)
@@ -57,16 +78,16 @@ func (fw *SFileWriter) openFile() error {
 	prDeb("file.go - openFile", "Begin")
 	// open the file
 	var err error
-	if fw.fd != nil {
-		fw.fd.Close()
+	if fw.mw.fd != nil {
+		fw.mw.fd.Close()
 	}
 	prDeb("file.go - openFile", "Open file "+fw.fileName)
-	fw.fd, err = os.OpenFile(fw.fileName, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0660)
+	fw.mw.fd, err = os.OpenFile(fw.fileName, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0660)
 	if err != nil {
 		prDeb("file.go - openFile", "File error. Err: ", err)
 		return err
 	}
-	prDeb("file.go - openFile", "File opened. Fd: ", fw.fd)
+	prDeb("file.go - openFile", "File opened. Fd: ", fw.mw.fd)
 	return nil
 }
 
@@ -85,12 +106,10 @@ func (fw *SFileWriter) Init(logger *SLogger, config map[string]interface{}) erro
 // Write message on the file.
 func (fw *SFileWriter) Write(msg SLogMsg) error {
 	prDeb("file.go - Write", "MSG: ", msg)
-	fw.lock.Lock()
-	defer fw.lock.Unlock()
 	if !fw.mainLogger.MustWrite("file", msg) {
 		return nil
 	}
-	if fw.fd == nil {
+	if fw.mw.fd == nil {
 		if err := fw.openFile(); err != nil {
 			return err
 		}
@@ -98,18 +117,19 @@ func (fw *SFileWriter) Write(msg SLogMsg) error {
 	// TODO: Write message to file
 	prDeb("file.go - Write", "Write message to file")
 	fw.l.Println("|||", msg.fnc, "|||", msg.msg)
+	//fw.fd.Write([]byte(msg.msg))
 	return nil
 }
 
 // implementing method. empty.
 func (fw *SFileWriter) Destroy() {
 	prDeb("Destroy", "close the file")
-	fw.fd.Close()
+	fw.mw.fd.Close()
 }
 
 // implementing method. empty.
 func (fw *SFileWriter) Flush() {
-	fw.fd.Sync()
+	fw.mw.fd.Sync()
 }
 
 func init() {
