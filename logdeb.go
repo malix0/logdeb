@@ -61,6 +61,7 @@ type sWriteRules struct {
 	FncRules map[tFncName]sBaseRule
 }
 
+// Log message details
 type SLogMsg struct {
 	fnc    tFncName
 	msg    string
@@ -68,6 +69,7 @@ type SLogMsg struct {
 	debLev tDebLevel
 }
 
+// Writer interface
 type ILogWriter interface {
 	Init(logger *SLogger, config map[string]interface{}) error
 	Write(msg SLogMsg) error
@@ -75,6 +77,7 @@ type ILogWriter interface {
 	Flush()
 }
 
+// Writer + write rules
 type SLogWriter struct {
 	writer     ILogWriter
 	writeRules sWriteRules
@@ -98,14 +101,7 @@ type SLogger struct {
 	sessionId   string                // Log session Id
 }
 
-const DEBUG = "1"
-
-func prDeb(fnc string, par ...interface{}) {
-	if DEBUG == "1" {
-		fmt.Println("*D*", "[["+fnc+"]]", par)
-	}
-}
-
+// Get timestamp
 func GetTsStr() string {
 	var t time.Time
 	t = time.Now()
@@ -115,6 +111,7 @@ func GetTsStr() string {
 	return fmt.Sprintf("%d%02d%02d%02d%02d%02d%03d", year, month, day, hour, min, sec, msec)
 }
 
+// Extract write rules from json config
 func getWriteRules(config map[string]interface{}) sWriteRules {
 	prDeb("getWriteRules", "config:", config)
 	wr := new(sWriteRules)
@@ -132,12 +129,12 @@ func getWriteRules(config map[string]interface{}) sWriteRules {
 			}
 		}
 	}
-	prDeb("getWriteRules", "WriteRules:", *wr)
+	prDeb("getWriteRules", "WriteRules:", *wr
 	return *wr
 }
 
 // NewLogDeb start configured writers and returns a new SLogger
-// - bufferSize: is the size of channel that hold messages before send to writers
+// - bufferSize: is the size of channel that hold messages before sending to writers
 // - config:     is the configuration in JSON format. Like {"console":{"Severity":5, "DebugLevel":3}}
 func NewLogDeb(bufferSize int64, config string) *SLogger {
 	const cFncName = cPckName + ".NewLogDeb"
