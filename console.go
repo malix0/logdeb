@@ -15,25 +15,45 @@
 package logdeb
 
 import (
+	"fmt"
 	"log"
 	"os"
 )
 
+const CONSSEP = "|||"
+
 type SConsoleWriter struct {
 	l          *log.Logger
+	flags      int
 	mainLogger *SLogger
 }
 
 // NewConsoleWriter: create SConsoleWriter returning as ILogWriter.
 func NewConsoleWriter() ILogWriter {
 	cw := new(SConsoleWriter)
-	cw.l = log.New(os.Stdout, "", log.Ldate|log.Ltime)
+	cw.flags = log.Ldate | log.Ltime
+	cw.l = log.New(os.Stdout, "", cw.flags)
 	return cw
+}
+
+// getConfig: extract configuration
+func (cw *SConsoleWriter) getConfig(config map[string]interface{}) error {
+	if len(config) > 0 {
+		confout := getConfig(config)
+		if v, t := confout["flags"]; t {
+			cw.flags = int(v.(float64))
+			cw.l.SetFlags(cw.flags)
+		}
+	}
+	return nil
 }
 
 // Init console logger.
 func (cw *SConsoleWriter) Init(logger *SLogger, config map[string]interface{}) error {
 	cw.mainLogger = logger
+	if err := cw.getConfig(config); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -43,7 +63,12 @@ func (cw *SConsoleWriter) Write(msg SLogMsg) error {
 	if !cw.mainLogger.MustWrite("console", msg) {
 		return nil
 	}
-	cw.l.Println("|||", msg.fnc, "|||", msg.msg)
+	fnc := fmt.Sprintf("%v[%s]", msg.fnc, msg.sev)
+	if cw.flags > 0 {
+		cw.l.Println(CONSSEP, fnc, CONSSEP, msg.msg)
+	} else {
+		cw.l.Println(fnc, CONSSEP, msg.msg)
+	}
 	return nil
 }
 

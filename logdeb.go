@@ -51,8 +51,8 @@ type tFncName string
 
 // Basic write rule
 type sBaseRule struct {
-	Severity   tSeverity
-	DebugLevel tDebLevel
+	Severity   tSeverity `json:"sev"`
+	DebugLevel tDebLevel `json:"dlev"`
 }
 
 // Write rules generic and with func granularity
@@ -111,6 +111,19 @@ func GetTsStr() string {
 	return fmt.Sprintf("%d%02d%02d%02d%02d%02d%03d", year, month, day, hour, min, sec, msec)
 }
 
+func getConfig(config map[string]interface{}) (confout map[string]interface{}) {
+	const FNAME = "getConfig"
+	prDeb(FNAME, "config:", config)
+	if len(config) > 0 {
+		confout = make(map[string]interface{}, len(config))
+		for k, v := range config {
+			prDeb(FNAME, "k:", k, "v:", v, "strings.Title(k):", strings.Title(k))
+			confout[k] = v
+		}
+	}
+	return
+}
+
 // Extract write rules from json config
 func getWriteRules(config map[string]interface{}) sWriteRules {
 	prDeb("getWriteRules", "config:", config)
@@ -129,7 +142,7 @@ func getWriteRules(config map[string]interface{}) sWriteRules {
 			}
 		}
 	}
-	prDeb("getWriteRules", "WriteRules:", *wr
+	prDeb("getWriteRules", "WriteRules:", *wr)
 	return *wr
 }
 
@@ -238,10 +251,10 @@ func (l *SLogger) SetDebugLevel(debLev tDebLevel) {
 func (r *sBaseRule) extract(config map[string]interface{}) {
 	for k, v := range config {
 		prDeb("extract", "k:", k, "v:", v)
-		if strings.ToLower(k) == "severity" {
+		if strings.ToLower(k) == "sev" {
 			prDeb("extract", "Set Severity:", v)
 			r.Severity = tSeverity(v.(float64))
-		} else if strings.ToLower(k) == "debuglevel" {
+		} else if strings.ToLower(k) == "dlev" {
 			prDeb("extract", "Set Debuglevel:", v)
 			r.DebugLevel = tDebLevel(v.(float64))
 		}

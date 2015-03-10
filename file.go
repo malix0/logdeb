@@ -18,7 +18,6 @@ import (
 	"errors"
 	"log"
 	"os"
-	"strings"
 	"sync"
 )
 
@@ -61,14 +60,12 @@ func NewFileWriter() ILogWriter {
 
 // getConfig: extract configuration
 func (fw *SFileWriter) getConfig(config map[string]interface{}) error {
-	const FNAME = "getConfig"
-	prDeb(FNAME, "config:", config)
-	for k, v := range config {
-		prDeb(FNAME, "k:", k, "v:", v, "strings.Title(k):", strings.Title(k))
-		if strings.ToLower(k) == "filename" {
+	if len(config) > 0 {
+		confout := getConfig(config)
+		if v, t := confout["filename"]; t {
 			fw.fileName = v.(string)
-
 		}
+
 	}
 	return nil
 }

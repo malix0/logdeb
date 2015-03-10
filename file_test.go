@@ -19,7 +19,7 @@ import (
 )
 
 func TestFile(t *testing.T) {
-	config := `{"file":{"Severity":5, "DebugLevel":3, "filename":"file.log"}}`
+	config := `{"file":{"sev":5, "dlev":3, "filename":"file.log"}}`
 	l := NewLogDeb(10, config)
 	defer l.Destroy()
 	l.Deb("TestFile", "test file")
