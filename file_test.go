@@ -15,12 +15,71 @@
 package logdeb
 
 import (
+	"bufio"
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
+	"os"
 	"testing"
 )
 
-func TestFile(t *testing.T) {
-	config := `{"file":{"sev":5, "dlev":3, "filename":"file.log"}}`
-	l := NewLogDeb(10, config)
-	defer l.Destroy()
-	l.Deb("TestFile", "test file")
+func runTestFile(t *testing.T, name string, config string, tmsgs []STLogMsg) {
+	var unconf map[string]interface{}
+	var filename string
+	err := json.Unmarshal([]byte(config), &unconf)
+	if err != nil {
+		panic(fmt.Sprintf("Error extracting writer config from json. ERR: %s", err))
+	}
+	if fc, t := unconf["file"]; t {
+		fcm := fc.(map[string]interface{})
+		if fn, t := fcm["filename"]; t {
+			filename = fn.(string)
+		} else {
+			panic(fmt.Sprintf("File name non configured for File Writer"))
+		}
+	} else {
+		panic(fmt.Sprintf("Can not find configuration for File Writer"))
+	}
+	// Delete the log file to get a clean config
+	os.Remove(filename)
+	executeTest(config, tmsgs)
+	f, err := os.OpenFile(filename, os.O_RDONLY, 0660)
+	if err != nil {
+		fmt.Println(err)
+	}
+	outb, err := ioutil.ReadAll(bufio.NewReader(f))
+	out := string(outb)
+	prTest("FILE OUTPUT:", out)
+	checkResult(t, out, name, FILESEP, tmsgs)
+}
+
+func TestFileDeb1(t *testing.T) {
+	name := "TestFileDeb1"
+	fnc := tFncName(name)
+	config := `{"file":{"flags":0, "filename":"file.log"}}`
+	tmsgs := []STLogMsg{
+		STLogMsg{SLogMsg{fnc: fnc, msg: "test file", sev: SEVERROR}, true},
+	}
+	runTestFile(t, name, config, tmsgs[:])
+}
+
+func TestFileDeb2(t *testing.T) {
+	name := "TestFileDeb2"
+	fnc := tFncName(name)
+	config := `{"file":{"flags":0, "sev":5, "dlev":3, "filename":"file.log"}}`
+	tmsgs := []STLogMsg{
+		STLogMsg{SLogMsg{fnc: fnc, msg: "test file"}, true},
+	}
+	runTestFile(t, name, config, tmsgs[:])
+}
+
+func TestFileDeb3(t *testing.T) {
+	name := "TestFileDeb3"
+	fnc := tFncName(name)
+	config := `{"file":{"flags":0, "sev":5, "dlev":3, "filename":"file.log"}}`
+	tmsgs := []STLogMsg{
+		STLogMsg{SLogMsg{fnc: fnc, msg: "test file 1"}, true},
+		STLogMsg{SLogMsg{fnc: fnc, msg: "test file 2"}, true},
+	}
+	runTestFile(t, name, config, tmsgs[:])
 }

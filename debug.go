@@ -1,4 +1,4 @@
-// +build debug,!testdeb
+// +build !testout,debug
 
 package logdeb
 

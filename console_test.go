@@ -16,10 +16,8 @@ package logdeb
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"os"
-	"strings"
 	"testing"
 )
 
@@ -52,61 +50,14 @@ func postTestConsole() {
 	os.Stdout = oldStout // restoring the real stdout
 }
 
+// Run console writer test and capture output from stdout
 func runTestConsole(t *testing.T, name string, config string, tmsgs []STLogMsg) {
 	preTestConsole()
-	l := NewLogDeb(10, config)
-	for _, tm := range tmsgs {
-		if tm.sev == 0 {
-			tm.sev = SEVDEBUG
-		}
-		if tm.sev == SEVDEBUG {
-			if tm.debLev != 0 {
-				l.Debl(tm.fnc, tm.msg, tm.debLev)
-			} else {
-				l.Deb(tm.fnc, tm.msg)
-			}
-		} else if tm.sev == SEVINFO {
-			l.Info(tm.fnc, tm.msg)
-		} else if tm.sev == SEVWARN {
-			l.Warn(tm.fnc, tm.msg)
-		} else if tm.sev == SEVERROR {
-			l.Err(tm.fnc, tm.msg)
-		} else if tm.sev == SEVFATAL {
-			l.Fatal(tm.fnc, tm.msg)
-		}
-	}
-	// Destroy force the flush of the message channel
-	l.Destroy()
+	executeTest(config, tmsgs)
 	postTestConsole()
 	out := <-outC
 	prTest("CONSOLE OUTPUT:", out)
-	outs := strings.Split(out, "\n")
-	var found bool
-	var matchlog, expect string
-	err := false
-	for _, tm := range tmsgs {
-		found = false
-		if tm.sev == 0 {
-			tm.sev = SEVDEBUG
-		}
-		matchlog = fmt.Sprintf("%s[%s] %s %s", tm.fnc, tm.sev, CONSSEP, tm.msg)
-		expect = expect + matchlog + "\n"
-		for i := 0; i < len(outs); i++ {
-			//if strings.Contains(outs[i], matchlog) {
-			if matchlog == outs[i] {
-				found = true
-				break
-			}
-		}
-		if tm.logit != found {
-			err = true
-		}
-	}
-
-	if err {
-		t.Errorf("%s\n EXPECT => %v\n GOT => %v", name, out, expect)
-	}
-
+	checkResult(t, out, name, CONSSEP, tmsgs)
 }
 
 func TestConsoleDeb1(t *testing.T) {

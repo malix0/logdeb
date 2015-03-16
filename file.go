@@ -16,10 +16,13 @@ package logdeb
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"os"
 	"sync"
 )
+
+const FILESEP = "|||"
 
 // an *os.File writer with locker.
 type MuxWriter struct {
@@ -31,6 +34,7 @@ type SFileWriter struct {
 	l          *log.Logger
 	mainLogger *SLogger
 	fileName   string
+	flags      int
 	mw         *MuxWriter
 }
 
@@ -52,9 +56,9 @@ func (mw *MuxWriter) SetFd(fd *os.File) {
 // NewFileWriter: create SFileWriter returning as ILogWriter.
 func NewFileWriter() ILogWriter {
 	fw := new(SFileWriter)
-	// TODO: Set writer
 	fw.mw = new(MuxWriter)
-	fw.l = log.New(fw.mw, "", log.Ldate|log.Ltime)
+	fw.flags = log.Ldate | log.Ltime
+	fw.l = log.New(fw.mw, "", fw.flags)
 	return fw
 }
 
@@ -64,6 +68,10 @@ func (fw *SFileWriter) getConfig(config map[string]interface{}) error {
 		confout := getConfig(config)
 		if v, t := confout["filename"]; t {
 			fw.fileName = v.(string)
+		}
+		if v, t := confout["flags"]; t {
+			fw.flags = int(v.(float64))
+			fw.l.SetFlags(fw.flags)
 		}
 
 	}
@@ -111,10 +119,13 @@ func (fw *SFileWriter) Write(msg SLogMsg) error {
 			return err
 		}
 	}
-	// TODO: Write message to file
 	prDeb("file.go - Write", "Write message to file")
-	fw.l.Println("|||", msg.fnc, "|||", msg.msg)
-	//fw.fd.Write([]byte(msg.msg))
+	fnc := fmt.Sprintf("%v[%s]", msg.fnc, msg.sev)
+	if fw.flags > 0 {
+		fw.l.Println(FILESEP, fnc, FILESEP, msg.msg)
+	} else {
+		fw.l.Println(fnc, FILESEP, msg.msg)
+	}
 	return nil
 }
 
