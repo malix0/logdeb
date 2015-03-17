@@ -14,7 +14,7 @@ To install the library just run
 	go get github.com/malix0/logdeb
 
 
-## Adapters supported 
+## Writers supported 
 
-At the moment the supported log adapter is `console`.
+At the moment the supported log writers are `console` and `file`.
 
