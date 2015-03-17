@@ -11,7 +11,9 @@ logdeb is a Go log library. It can use many log adapters. The library is inspire
 
 To install the library just run
 
-	go get github.com/malix0/logdeb
+```sh
+go get github.com/malix0/logdeb
+```
 
 
 ## Writers supported 
